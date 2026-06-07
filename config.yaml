@@ -1,0 +1,38 @@
+# 手部运动检测配置
+
+camera:
+  device_id: 0
+  width: 640
+  height: 480
+  fps: 30
+
+detection:
+  max_hands: 1
+  detection_confidence: 0.7
+  tracking_confidence: 0.5
+
+motion:
+  # 速度平滑窗口大小（帧数）
+  smoothing_window: 5
+  # 运动方向判定最小速度阈值（像素/帧）
+  direction_threshold: 3.0
+  # 挥手检测：连续方向变化次数
+  wave_min_changes: 3
+  # 挥手检测：方向变化时间窗口（秒）
+  wave_time_window: 1.5
+  # 抓取检测：手指弯曲角度阈值（度）
+  grab_bend_threshold: 60
+  # 点击检测：向下速度阈值
+  click_speed_threshold: 15.0
+  # 画圈检测：轨迹点最小数量
+  circle_min_points: 15
+  # 画圈检测：圆形拟合误差阈值
+  circle_fit_threshold: 0.25
+
+trajectory:
+  # 轨迹历史长度（帧数）
+  max_length: 120
+  # 轨迹线条宽度
+  line_width: 2
+  # 是否默认开启轨迹显示
+  enabled: true
