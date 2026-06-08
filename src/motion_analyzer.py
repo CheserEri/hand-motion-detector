@@ -61,7 +61,7 @@ class MotionAnalyzer:
         self.cfg = config.get("motion", {})
 
         self._smoothing_window = self.cfg.get("smoothing_window", 5)
-        self._direction_threshold = self.cfg.get("direction_threshold", 3.0)
+        self._min_speed_threshold = self.cfg.get("direction_threshold", 3.0)
         self._wave_min_changes = self.cfg.get("wave_min_changes", 3)
         self._wave_time_window = self.cfg.get("wave_time_window", 1.5)
         self._grab_bend_threshold = self.cfg.get("grab_bend_threshold", 60)
@@ -71,7 +71,7 @@ class MotionAnalyzer:
 
         # 状态追踪
         self._prev_center: Optional[Tuple[float, float]] = None
-        self._speed_history: List[float] = []
+        self._speed_history: Deque[float] = deque(maxlen=self._smoothing_window)
         self._direction_history: Deque[Tuple[float, float]] = deque(maxlen=100)
         self._wave_direction_changes: Deque[float] = deque(maxlen=50)
         self._palm_center_history: Deque[Tuple[float, float, float]] = deque(maxlen=200)
@@ -105,7 +105,7 @@ class MotionAnalyzer:
             # 平滑速度
             speed = smooth_value(self._speed_history, raw_speed, self._smoothing_window)
 
-            if speed > self._direction_threshold:
+            if speed > self._min_speed_threshold:
                 movement = np.array([dx, dy], dtype=np.float64)
                 direction_angle = vector_angle_to_horizontal(movement)
                 direction_str = direction_label(direction_angle)
@@ -145,7 +145,7 @@ class MotionAnalyzer:
 
         # 确定当前运动类型
         current_motion = MotionType.IDLE
-        if speed > self._direction_threshold:
+        if speed > self._min_speed_threshold:
             current_motion = MotionType.MOVING
         if events:
             current_motion = events[-1].motion_type
@@ -174,7 +174,7 @@ class MotionAnalyzer:
         if len(recent) < 5:
             return None
 
-        consistent = all(s > self._direction_threshold for _, s in recent)
+        consistent = all(s > self._min_speed_threshold for _, s in recent)
         if not consistent:
             return None
 
@@ -204,7 +204,7 @@ class MotionAnalyzer:
         """检测挥手动作（左右快速往复）。"""
         if direction not in ("左", "右"):
             return None
-        if speed < self._direction_threshold:
+        if speed < self._min_speed_threshold:
             return None
 
         self._wave_direction_changes.append((now, direction))

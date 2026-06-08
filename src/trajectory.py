@@ -6,6 +6,8 @@ from typing import Deque, List, Optional, Tuple
 import cv2
 import numpy as np
 
+from src.hand_detector import FINGER_TIP_IDS
+
 
 # 轨迹颜色渐变（从旧到新：蓝 → 绿 → 黄 → 红）
 _TRAJECTORY_COLORS = [
@@ -56,30 +58,37 @@ class TrajectoryRecorder:
         if landmarks is None or not self.enabled:
             return
 
-        tip_indices = [4, 8, 12, 16, 20]  # 五根手指的指尖
-        for i, tip_id in enumerate(tip_indices):
+        for i, tip_id in enumerate(FINGER_TIP_IDS):
             if tip_id < len(landmarks):
                 self._trajectories[i].append(landmarks[tip_id])
 
     def draw(self, frame: np.ndarray) -> np.ndarray:
-        """在帧上绘制轨迹线。返回叠加了轨迹的帧。"""
+        """在帧上绘制轨迹线（原地绘制，不额外 copy）。"""
         if not self.enabled:
             return frame
 
-        overlay = frame.copy()
-
         for finger_traj in self._trajectories:
             points = list(finger_traj)
-            if len(points) < 2:
+            n = len(points)
+            if n < 2:
                 continue
 
-            for i in range(1, len(points)):
-                ratio = i / len(points)
-                color = _get_gradient_color(ratio)
-                thickness = max(1, int(self.line_width * (0.5 + ratio * 0.5)))
-                cv2.line(overlay, points[i - 1], points[i], color, thickness, cv2.LINE_AA)
+            # 分段绘制：每段用渐变色，合并相邻同色线段以减少 OpenCV 调用
+            segment_count = len(_TRAJECTORY_COLORS) - 1
+            for seg in range(segment_count):
+                lo = int(seg / segment_count * n)
+                hi = int((seg + 1) / segment_count * n)
+                hi = min(hi, n)
+                if hi - lo < 2:
+                    continue
+                # 取该段中间比例作为整段颜色
+                mid_ratio = (lo + hi) / 2 / n
+                color = _get_gradient_color(mid_ratio)
+                thickness = max(1, int(self.line_width * (0.5 + mid_ratio * 0.5)))
+                pts = np.array(points[lo:hi], dtype=np.int32)
+                cv2.polylines(frame, [pts], False, color, thickness, cv2.LINE_AA)
 
-        return overlay
+        return frame
 
     def clear(self):
         """清空所有轨迹。"""

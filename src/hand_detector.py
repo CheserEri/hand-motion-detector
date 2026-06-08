@@ -84,31 +84,31 @@ class HandDetector:
         return hand_results
 
     def draw_landmarks(self, frame: np.ndarray, hand: HandResult) -> np.ndarray:
-        """在帧上绘制手部关键点和连线。"""
-        overlay = frame.copy()
-
+        """在帧上原地绘制手部关键点和连线（不额外 copy）。"""
         # 绘制关键点连线
         connections = self.mp_hands.HAND_CONNECTIONS
         for start_idx, end_idx in connections:
             p1 = hand.landmarks[start_idx]
             p2 = hand.landmarks[end_idx]
-            cv2.line(overlay, p1, p2, (0, 255, 0), 2)
+            cv2.line(frame, p1, p2, (0, 255, 0), 2)
 
         # 绘制关键点
+        tip_set = set(FINGER_TIP_IDS)
         for i, (x, y) in enumerate(hand.landmarks):
-            color = (0, 0, 255) if i in FINGER_TIP_IDS else (255, 255, 0)
-            radius = 5 if i in FINGER_TIP_IDS else 3
-            cv2.circle(overlay, (x, y), radius, color, -1)
+            if i in tip_set:
+                cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
+            else:
+                cv2.circle(frame, (x, y), 3, (255, 255, 0), -1)
 
         # 绘制边界框
         x, y, w, h = hand.bounding_box
-        cv2.rectangle(overlay, (x - 10, y - 10), (x + w + 10, y + h + 10), (0, 255, 255), 2)
+        cv2.rectangle(frame, (x - 10, y - 10), (x + w + 10, y + h + 10), (0, 255, 255), 2)
 
         # 绘制标签
         label = f"{hand.handedness} ({hand.confidence:.2f})"
-        cv2.putText(overlay, label, (x - 10, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+        cv2.putText(frame, label, (x - 10, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
 
-        return overlay
+        return frame
 
     def release(self):
         """释放 MediaPipe 资源。"""

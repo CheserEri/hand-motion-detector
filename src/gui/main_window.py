@@ -10,6 +10,7 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QFileDialog,
     QFrame,
     QGroupBox,
     QHBoxLayout,
@@ -29,18 +30,18 @@ from src.motion_analyzer import MotionAnalyzer, MotionEvent, MotionType, MotionS
 from src.trajectory import TrajectoryRecorder
 
 
-# 动作类型对应的中文名称和图标
-MOTION_LABELS = {
-    MotionType.IDLE: ("静止", "⏸"),
-    MotionType.MOVING: ("移动", "✋"),
-    MotionType.WAVING: ("挥手", "👋"),
-    MotionType.GRABBING: ("抓取", "✊"),
-    MotionType.RELEASING: ("释放", "🖐"),
-    MotionType.CIRCLE: ("画圈", "⭕"),
-    MotionType.SWIPE_UP: ("上滑", "⬆"),
-    MotionType.SWIPE_DOWN: ("下滑", "⬇"),
-    MotionType.SWIPE_LEFT: ("左滑", "⬅"),
-    MotionType.SWIPE_RIGHT: ("右滑", "➡"),
+# 动作类型对应的中文名称、图标和主题色 (背景色, 前景色)
+MOTION_DISPLAY = {
+    MotionType.IDLE:        ("静止", "⏸", "#2b2b2b", "#888888"),
+    MotionType.MOVING:      ("移动", "✋", "#1b2b3b", "#44aaff"),
+    MotionType.WAVING:      ("挥手", "👋", "#2b2b1b", "#ffaa00"),
+    MotionType.GRABBING:    ("抓取", "✊", "#2b1b1b", "#ff4444"),
+    MotionType.RELEASING:   ("释放", "🖐", "#1b2b1b", "#44ff44"),
+    MotionType.CIRCLE:      ("画圈", "⭕", "#2b1b2b", "#ff44ff"),
+    MotionType.SWIPE_UP:    ("上滑", "⬆", "#1b2b2b", "#00ffaa"),
+    MotionType.SWIPE_DOWN:  ("下滑", "⬇", "#1b2b2b", "#00aaff"),
+    MotionType.SWIPE_LEFT:  ("左滑", "⬅", "#2b2b1b", "#ffff00"),
+    MotionType.SWIPE_RIGHT: ("右滑", "➡", "#2b1b2b", "#ff8800"),
 }
 
 
@@ -213,7 +214,7 @@ class MainWindow(QMainWindow):
 
         # 手部检测
         hands = self._detector.detect(frame)
-        display = frame.copy()
+        display = frame  # camera.read() 已返回副本，无需再次 copy
 
         if hands:
             hand = hands[0]  # 取第一只手
@@ -245,25 +246,14 @@ class MainWindow(QMainWindow):
 
     def _update_motion_display(self, state: MotionState):
         """更新运动状态显示。"""
-        label, icon = MOTION_LABELS.get(state.current_motion, ("未知", "?"))
+        display = MOTION_DISPLAY.get(state.current_motion)
+        if display:
+            label, icon, bg, fg = display
+        else:
+            label, icon, bg, fg = "未知", "?", "#2b2b2b", "#00ff88"
         self._motion_label.setText(f"{icon} {label}")
         self._direction_label.setText(f"方向: {state.direction}")
         self._speed_label.setText(f"速度: {state.speed:.1f} px/帧")
-
-        # 根据运动类型改变颜色
-        colors = {
-            MotionType.IDLE: ("#2b2b2b", "#888888"),
-            MotionType.MOVING: ("#1b2b3b", "#44aaff"),
-            MotionType.WAVING: ("#2b2b1b", "#ffaa00"),
-            MotionType.GRABBING: ("#2b1b1b", "#ff4444"),
-            MotionType.RELEASING: ("#1b2b1b", "#44ff44"),
-            MotionType.CIRCLE: ("#2b1b2b", "#ff44ff"),
-            MotionType.SWIPE_UP: ("#1b2b2b", "#00ffaa"),
-            MotionType.SWIPE_DOWN: ("#1b2b2b", "#00aaff"),
-            MotionType.SWIPE_LEFT: ("#2b2b1b", "#ffff00"),
-            MotionType.SWIPE_RIGHT: ("#2b1b2b", "#ff8800"),
-        }
-        bg, fg = colors.get(state.current_motion, ("#2b2b2b", "#00ff88"))
         self._motion_label.setStyleSheet(
             f"padding: 15px; background-color: {bg}; border-radius: 8px; color: {fg};"
         )
@@ -311,15 +301,26 @@ class MainWindow(QMainWindow):
         if frame is None:
             return
         ts = time.strftime("%Y%m%d_%H%M%S")
-        filename = f"screenshot_{ts}.png"
+        default_name = f"screenshot_{ts}.png"
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "保存截图", default_name, "PNG 图片 (*.png);;JPEG 图片 (*.jpg)"
+        )
+        if not filename:
+            return
         cv2.imwrite(filename, frame)
         self._log_text.append(f"[系统] 截图已保存: {filename}")
 
     def closeEvent(self, event):
         """窗口关闭时释放资源。"""
         self._timer.stop()
-        if self._camera:
-            self._camera.stop()
-        if self._detector:
-            self._detector.release()
+        try:
+            if self._camera:
+                self._camera.stop()
+        except Exception as e:
+            print(f"[警告] 摄像头关闭异常: {e}")
+        try:
+            if self._detector:
+                self._detector.release()
+        except Exception as e:
+            print(f"[警告] 检测器释放异常: {e}")
         event.accept()

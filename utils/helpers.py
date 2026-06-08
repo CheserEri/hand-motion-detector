@@ -1,7 +1,8 @@
 """工具函数：角度计算、向量运算等。"""
 
 import math
-from typing import Tuple
+from collections import deque
+from typing import Deque, Tuple
 
 import numpy as np
 
@@ -23,11 +24,9 @@ def vector_angle_to_horizontal(v: np.ndarray) -> float:
     return math.degrees(math.atan2(-v[1], v[0]))  # y轴向下，取反
 
 
-def smooth_value(history: list, new_value: float, window: int = 5) -> float:
-    """对数值进行滑动窗口平滑。"""
+def smooth_value(history: Deque[float], new_value: float, window: int = 5) -> float:
+    """对数值进行滑动窗口平滑。history 应为 deque(maxlen=window)。"""
     history.append(new_value)
-    if len(history) > window:
-        history.pop(0)
     return sum(history) / len(history)
 
 
@@ -78,8 +77,9 @@ def circle_fit_error(points: list, cx: float, cy: float, r: float) -> float:
     """计算点到拟合圆的平均相对误差。"""
     if r <= 0:
         return float("inf")
-    errors = [abs(distance(p, (cx, cy)) - r) / r for p in points]
-    return sum(errors) / len(errors)
+    pts = np.array(points, dtype=np.float64)
+    dists = np.linalg.norm(pts - np.array([cx, cy]), axis=1)
+    return float(np.mean(np.abs(dists - r) / r))
 
 
 def direction_label(angle: float) -> str:
