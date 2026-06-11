@@ -31,8 +31,10 @@ motion:
 
 trajectory:
   # 轨迹历史长度（帧数）
-  max_length: 120
+  max_length: 40
   # 轨迹线条宽度
   line_width: 2
+  # 手部丢失后每帧移除的轨迹点数（越大消失越快）
+  fade_speed: 10
   # 是否默认开启轨迹显示
   enabled: true

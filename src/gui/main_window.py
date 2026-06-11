@@ -186,6 +186,7 @@ class MainWindow(QMainWindow):
         self._trajectory = TrajectoryRecorder(
             max_length=traj_cfg.get("max_length", 120),
             line_width=traj_cfg.get("line_width", 2),
+            fade_speed=traj_cfg.get("fade_speed", 5),
         )
         self._trajectory.enabled = traj_cfg.get("enabled", True)
 
@@ -197,6 +198,12 @@ class MainWindow(QMainWindow):
 
     def _process_frame(self):
         """处理一帧画面（定时器回调）。"""
+        try:
+            self._process_frame_inner()
+        except Exception as e:
+            print(f"[错误] 帧处理异常: {e}")
+
+    def _process_frame_inner(self):
         if self._camera is None or not self._camera.is_running():
             return
 

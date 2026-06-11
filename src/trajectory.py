@@ -40,9 +40,10 @@ def _get_gradient_color(ratio: float) -> Tuple[int, int, int]:
 class TrajectoryRecorder:
     """记录指尖轨迹并在帧上绘制。"""
 
-    def __init__(self, max_length: int = 120, line_width: int = 2):
+    def __init__(self, max_length: int = 120, line_width: int = 2, fade_speed: int = 5):
         self.max_length = max_length
         self.line_width = line_width
+        self.fade_speed = fade_speed
         self.enabled = True
 
         # 每根指尖一个轨迹
@@ -53,9 +54,16 @@ class TrajectoryRecorder:
     def update(self, landmarks: Optional[List[Tuple[int, int]]]):
         """用最新的关键点更新轨迹。
 
-        landmarks: 21个关键点坐标列表，或 None（无检测结果时清空）。
+        landmarks: 21个关键点坐标列表，或 None（无检测结果时快速淡出）。
         """
-        if landmarks is None or not self.enabled:
+        if not self.enabled:
+            return
+
+        if landmarks is None:
+            # 手部丢失：每帧移除多个点，实现快速淡出
+            for traj in self._trajectories:
+                for _ in range(min(self.fade_speed, len(traj))):
+                    traj.popleft()
             return
 
         for i, tip_id in enumerate(FINGER_TIP_IDS):
