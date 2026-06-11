@@ -15,20 +15,61 @@
 - **参数可调** — 运行时调整检测灵敏度和阈值
 - **截图保存** — 一键保存当前画面
 
+## 环境要求
+
+- Python 3.8+
+- 摄像头设备（内置或外接 USB 摄像头）
+- Windows / macOS / Linux
+
 ## 安装
 
 ```bash
+# 克隆仓库
+git clone https://github.com/CheserEri/hand-motion-detector.git
 cd hand-motion-detector
+
+# 创建虚拟环境（推荐）
+python -m venv .venv
+
+# 激活虚拟环境
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+
+# 安装依赖
 pip install -r requirements.txt
 ```
 
-> 需要 Python 3.8+ 和可用的摄像头设备。
-
-## 运行
+## 使用
 
 ```bash
 python main.py
 ```
+
+启动后会打开 GUI 界面：
+
+1. **启动摄像头** — 程序自动开启默认摄像头（device_id: 0）
+2. **手势识别** — 将手置于摄像头前，系统自动检测并显示手部关键点
+3. **查看状态** — 右侧面板实时显示当前运动状态、方向和速度
+4. **调整参数** — 点击"设置"按钮可调整检测灵敏度
+
+### 支持的手势
+
+| 手势 | 动作说明 |
+|------|----------|
+| 👋 挥手 | 手掌左右快速往复移动 |
+| ✊ 抓取 | 握拳动作 |
+| 🖐 释放 | 张开手掌 |
+| ⬆⬇⬅➡ 滑动 | 手指向上下左右移动 |
+| ⭕ 画圈 | 指尖画圆形轨迹 |
+
+### 操作按钮
+
+- **显示/隐藏轨迹** — 切换运动轨迹可视化
+- **清除轨迹** — 清空当前轨迹记录
+- **截图** — 保存当前画面到 `screenshots/` 目录
+- **设置** — 调整检测参数（实时生效）
 
 ## 项目结构
 
