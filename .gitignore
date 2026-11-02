@@ -11,6 +11,9 @@ venv/
 env/
 .env
 *.png
+# 启动图标是构建必需资源，README 截图需要展示，均需入库
+!android/app/src/main/res/**/*.png
+!docs/*.png
 *.jpg
 *.jpeg
 *.bmp

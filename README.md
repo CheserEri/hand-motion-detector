@@ -1,177 +1,137 @@
-# 手部运动检测 (Hand Motion Detector)
+<div align="center">
+  <img src="docs/icon.png" width="112" alt="手势控制图标" />
+  <h1>手势控制 · Hand Motion Detector</h1>
+  <p>用摄像头识别手势，隔空全局控制安卓手机。</p>
+  <p>全部识别在本地完成，画面不保存、不上传。</p>
 
-基于摄像头的实时手部运动状态检测应用。使用 MediaPipe 进行手部关键点检测，通过轨迹分析识别动态手势动作。
+  [![Release](https://img.shields.io/github/v/release/CheserEri/hand-motion-detector?label=下载&style=flat-square)](https://github.com/CheserEri/hand-motion-detector/releases/latest)
+  [![Platform](https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](#下载与安装)
+  [![Kotlin](https://img.shields.io/badge/Kotlin-Compose-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](#技术栈)
+</div>
 
-## 功能特性
+---
 
-- **实时手部检测** — MediaPipe 21 个关键点追踪
-- **动态动作识别**:
-  - 👋 挥手（左右快速往复）
-  - ✊ 抓取 / 🖐 释放（握拳与张开）
-  - ⬆⬇⬅➡ 上/下/左/右滑动
-  - ⭕ 画圈（指尖轨迹圆形拟合）
-- **运动轨迹可视化** — 彩色渐变轨迹线
-- **完整 GUI** — PyQt5 深色主题界面
-- **参数可调** — 运行时调整检测灵敏度和阈值
-- **截图保存** — 一键保存当前画面
+## 这是什么
 
-## 环境要求
+手机开着摄像头，你在镜头前挥手就能操作手机：刷下一条视频、返回桌面、打开指定应用。不需要触碰屏幕，也不依赖语音。
 
-- Python 3.8+
-- 摄像头设备（内置或外接 USB 摄像头）
-- Windows / macOS / Linux
+识别只用 MediaPipe 手部关键点，在设备端实时推理；App 只负责把识别结果通过无障碍服务注入系统手势，不读取屏幕内容。
 
-## 安装
+## 手势
+
+| 手势 | 动作 |
+| --- | --- |
+| 手掌自下向上轻快挥动 | 全局上滑（抖音 / 小红书「下一条」） |
+| 握拳 | 返回桌面 |
+| 伸出 1 根手指 | 打开为「1 指」指定的应用 |
+| 伸出 3 根手指 | 打开为「3 指」指定的应用 |
+| 伸出 4 根手指（拇指需收拢） | 打开为「4 指」指定的应用 |
+| 比 ✌ | 开启 / 关闭其他手势，本身不执行动作 |
+
+设计上刻意只保留向上挥动：向下挥动是抬手与收手的自然动作，识别它必然误触。拇指外伸的张开手掌不会被判成「4 根手指」。手指手势与握拳只在手停稳时识别，挥动过程不参与判定。
+
+## 界面
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshot-main.png" alt="主界面" /></td>
+    <td width="50%"><img src="docs/screenshot-picker.png" alt="应用选择" /></td>
+  </tr>
+  <tr>
+    <td align="center">深色 HUD 主界面：权限状态、手势映射、偏好开关</td>
+    <td align="center">为手指手势选择要打开的应用</td>
+  </tr>
+</table>
+
+运行后屏幕左侧会出现一个可拖动的状态球，实时显示「无手 / 静止 / 上 / 握拳 / 1 指 / 手势已关闭」等识别结果。
+
+## 下载与安装
+
+1. 到 [Releases](https://github.com/CheserEri/hand-motion-detector/releases/latest) 下载 `app-release.apk`，传到手机上安装（Android 8.0 及以上）。
+2. 打开 App，逐个开通：
+   - **相机**：识别手部关键点（必需）
+   - **通知**：显示常驻通知，降低后台被系统回收的概率
+   - **悬浮窗**：显示状态球（可选）
+   - **无障碍**：把识别结果转成全局手势（必需，需在系统设置里手动开启）
+3. 建议把 App 加入电池优化白名单，避免后台被清理。
+4. 回到 App 点击「启动手势控制」，看到状态变为 `ACTIVE` 即可使用。
+
+> 好消息：识别不依赖网络，飞行模式下也能用。
+
+## 识别与低功耗
+
+- **采集**：CameraX `ImageAnalysis`，320×240、约 15fps，`KEEP_ONLY_LATEST`，不渲染预览。
+- **推理**：MediaPipe `HandLandmarker` LIVE_STREAM，单手，优先 GPU，失败自动回退 CPU。
+- **降频**：无手 1 秒后降到约 8fps；灭屏自动停摄像头；电量低于 15% 自动暂停。
+- **手势切割**：一次手势触发后立即进入未武装状态，必须同时满足 450ms 静默与手部真正停稳（250ms 窗口内累计路程小于 0.25 手长，来回摆动不算停稳）才重新武装。手没回撤、没停稳之前不会识别下一个手势。
+- **意图判定**：在最近 500ms 内找幅度最大、速度最快、方向一致的那一段（≥0.25 手长、≥1.2 手长/秒、同向占比 ≥75%），所以轻快上挥一下就能触发，慢速预备动作不触发。
+- **稳定性**：手尺度归一化（腕点→中指 MCP）、One-Euro 滤波、食指尖竖直位移 + 掌心同向移动 + 手指张开度联合判定；握拳与手指数使用角度滞回与稳定帧数。
+
+## 从源码构建
 
 ```bash
-# 克隆仓库
-git clone https://github.com/CheserEri/hand-motion-detector.git
-cd hand-motion-detector
-
-# 创建虚拟环境（推荐）
-python -m venv .venv
-
-# 激活虚拟环境
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
-
-# 安装依赖
-pip install -r requirements.txt
+cd android
+# 需要 JDK 17 与 Android SDK（compileSdk 35）
+./gradlew assembleDebug
 ```
 
-## 使用
+或在 Android Studio 中打开 `android/` 目录直接运行。模型文件已随仓库提供：`android/app/src/main/assets/hand_landmarker.task`（缺失时可从 [MediaPipe 模型库](https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task) 下载）。
+
+手势引擎是纯 Kotlin 实现，可跑单元测试：
 
 ```bash
-python main.py
+cd android && ./gradlew testDebugUnitTest
 ```
 
-启动后会打开 GUI 界面：
+### 技术栈
 
-1. **启动摄像头** — 程序自动开启默认摄像头（device_id: 0）
-2. **手势识别** — 将手置于摄像头前，系统自动检测并显示手部关键点
-3. **查看状态** — 右侧面板实时显示当前运动状态、方向和速度
-4. **调整参数** — 点击"设置"按钮可调整检测灵敏度
+Kotlin · Jetpack Compose（Material 3，深色 HUD 主题）· CameraX · MediaPipe Tasks Vision · AccessibilityService · 前台服务 · 无预览渲染。
 
-### 支持的手势
+## 隐私
 
-| 手势 | 动作说明 |
-|------|----------|
-| 👋 挥手 | 手掌左右快速往复移动 |
-| ✊ 抓取 | 握拳动作 |
-| 🖐 释放 | 张开手掌 |
-| ⬆⬇⬅➡ 滑动 | 手指向上下左右移动 |
-| ⭕ 画圈 | 指尖画圆形轨迹 |
-
-### 操作按钮
-
-- **显示/隐藏轨迹** — 切换运动轨迹可视化
-- **清除轨迹** — 清空当前轨迹记录
-- **截图** — 保存当前画面到 `screenshots/` 目录
-- **设置** — 调整检测参数（实时生效）
+- 摄像头画面只在内存中处理，不解码保存、不上传、不写日志。
+- 不使用网络权限，全部推理在本地完成。
+- 无障碍服务只用于注入滑动/返回/启动应用，不读取屏幕文本。
 
 ## 项目结构
 
 ```
-├── main.py                 # 程序入口
-├── config.yaml             # 配置文件
-├── requirements.txt        # 依赖列表
-├── src/
-│   ├── camera.py           # 摄像头采集（线程化）
-│   ├── hand_detector.py    # MediaPipe 手部检测封装
-│   ├── motion_analyzer.py  # 运动状态分析引擎
-│   ├── trajectory.py       # 轨迹记录与可视化
-│   └── gui/
-│       ├── main_window.py  # 主窗口
-│       ├── canvas.py       # 视频画布控件
-│       └── settings_dialog.py  # 设置对话框
-└── utils/
-    └── helpers.py          # 工具函数
+android/                                  # 安卓 App（Gradle 工程）
+├── app/src/main/
+│   ├── assets/hand_landmarker.task        # MediaPipe 手部模型
+│   ├── res/                               # 自适应图标、主题、无障碍配置
+│   └── java/com/chesereri/handmotiondetector/
+│       ├── MainActivity.kt                # Compose 权限引导与设置界面
+│       ├── service/GestureCameraService.kt# 前台摄像头 + 识别循环
+│       ├── service/HandAccessibilityService.kt # 全局手势注入
+│       ├── overlay/OverlayBadge.kt        # 可拖动状态球
+│       ├── vision/GestureEngine.kt        # 纯 Kotlin 手势识别（可单测）
+│       ├── vision/HandLandmarkerHelper.kt # MediaPipe 封装
+│       ├── vision/OneEuroFilter.kt        # 关键点平滑
+│       └── vision/ImageProxyExt.kt        # 相机帧转位图
+└── app/src/test/                          # 手势引擎单元测试
+
+main.py                                   # 桌面版（Python + PyQt5）入口
+src/                                      # 桌面版源码
+docs/                                     # README 截图
 ```
 
-## 配置说明
+## 桌面版（Python）
 
-编辑 `config.yaml` 调整参数：
+仓库里还保留最初的桌面实验版本：PyQt5 界面 + MediaPipe，用于观察手部关键点、轨迹和调参。
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `motion.direction_threshold` | 运动方向判定最小速度 | 3.0 px/帧 |
-| `motion.smoothing_window` | 速度平滑窗口 | 5 帧 |
-| `motion.wave_min_changes` | 挥手最小方向变化次数 | 3 次 |
-| `motion.grab_bend_threshold` | 抓取弯曲角度阈值 | 60° |
-| `detection.detection_confidence` | 手部检测置信度 | 0.7 |
-| `detection.tracking_confidence` | 手部跟踪置信度 | 0.5 |
-
-## 界面说明
-
-- **左侧**: 摄像头实时画面，叠加手部关键点和运动轨迹
-- **右侧控制面板**:
-  - 当前运动状态（大字显示）
-  - 运动方向和速度
-  - 事件日志
-  - 轨迹显示/清除、参数设置、截图等功能按钮
-
-## 安卓 App（手势控制）
-
-`android/` 目录是一套完整的 Gradle 工程，可直接用 Android Studio 打开。目标是在 App 运行期间用手势全局控制手机，强调**低功耗**与**高识别率**。
-
-### 手势映射
-
-| 手势 | 动作 |
-|------|------|
-| 食指尖自下向上（手保持张开） | 在屏幕中央注入上滑 |
-| 握拳 | 返回桌面 |
-| 伸出 1 / 3 / 4 根手指（拇指收拢，保持约 0.4 秒） | 打开 App 内为该手势指定的应用 |
-| 比 ✌（食指、中指伸出，其余收拢） | 切换其他手势的开启 / 关闭 |
-
-只识别向上挥动，向下挥动视为预备/收手动作，不会触发任何手势。张开手掌不再绑定动作，只用于复位握拳状态（握拳后张开再握拳可再次触发）；张开手掌拇指外伸，不会误判成「4 根手指」。手向上移动默认对应系统上滑，可在 App 内反转上下方向。手指手势需在「手势设置 → 手指手势打开应用」中分别选择目标应用，且只在手停稳时识别。比 ✌ 需保持约 0.4 秒才切换一次，保持姿势不会反复切换；悬浮球会显示「手势已开启 / 手势已关闭」。
-
-### 识别与功耗设计
-
-- **采集**：CameraX `ImageAnalysis`，320×240、约 15fps，`KEEP_ONLY_LATEST`，不做预览渲染。
-- **推理**：MediaPipe `HandLandmarker` LIVE_STREAM 模式，单手，优先 GPU，失败自动回退 CPU。
-- **降频**：无手 1 秒后降至约 8fps；灭屏自动停止摄像头；电量低于 15% 自动暂停。
-- **手势切割**：触发一次手势后立即进入未武装状态，必须同时满足 600ms 静默与手部真正停稳（300ms 窗口内累计路程小于 0.15 手长，来回摆动不算停稳）才重新武装；手未回撤/停稳前不会识别下一个手势。连续丢手 5 帧后复位，重新出现的手也需先停稳。
-- **意图判定**：只识别向上的竖直挥动，在最近 500ms 内寻找幅度最大、速度最快且方向一致的那一段（≥0.25 手长、≥1.2 手长/秒、同向占比 ≥75%），轻快地上挥一下即可触发；慢速预备动作与向下收手不触发。反向位移超过主挥动 100% 时视为意图不明确，直接忽略。方向只区分上下，左右位移不参与识别。
-- **稳定性**：手尺度归一化（腕点→中指 MCP）、One-Euro 滤波、食指尖竖直位移 + 掌心同向移动 + 手指张开度联合判定、握拳使用弯曲角滞回与稳定帧数。
-- **无画圈手势**（移植首版不实现）。
-
-### 构建步骤
-
-1. 使用 Android Studio（Ladybug 或更新版本）打开 `android/` 目录，等待 Gradle 同步。
-2. 模型文件已放在 `android/app/src/main/assets/hand_landmarker.task`。若缺失，可从
-   `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`
-   下载后放入该目录。
-3. 连接手机，运行 `app`。
-4. 在 App 内依次授权：相机、通知（Android 13+）、悬浮窗（可选）、无障碍服务（必需），然后点击「启动手势控制」。
-5. 手势引擎的单元测试位于 `android/app/src/test/`，可在 Android Studio 中直接运行。
-
-### 限制与提示
-
-- 无障碍服务必须由用户在系统设置中手动开启；本应用不读取屏幕内容，只注入手势。
-- Android 14 要求相机前台服务从可见界面启动，因此请从 App 内按钮启动。
-- 部分厂商系统会清理后台，建议将本应用加入电池优化白名单。
-- 所有识别均在本地完成，画面不保存、不上传。
-
-### 安卓工程结构
-
+```bash
+python -m venv .venv
+.venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
 ```
-android/
-├── settings.gradle.kts / build.gradle.kts / gradle.properties
-└── app/
-    ├── build.gradle.kts
-    └── src/main/
-        ├── AndroidManifest.xml
-        ├── assets/hand_landmarker.task        # MediaPipe 手部模型
-        ├── res/                               # 主题、图标、无障碍配置
-        └── java/com/chesereri/handmotiondetector/
-            ├── MainActivity.kt                # Compose 权限引导与设置
-            ├── service/GestureCameraService.kt    # 前台摄像头服务
-            ├── service/HandAccessibilityService.kt# 全局手势注入
-            ├── overlay/OverlayBadge.kt        # 可拖动状态球
-            ├── vision/GestureEngine.kt        # 纯 Kotlin 手势识别
-            ├── vision/HandLandmarkerHelper.kt # MediaPipe 封装
-            ├── vision/OneEuroFilter.kt        # 关键点平滑
-            └── vision/ImageProxyExt.kt        # 相机帧转 Bitmap
-```
+
+它支持挥手、抓取/释放、上下左右滑动和画圈的可视化演示，识别参数在 `config.yaml` 中调整（方向阈值、平滑窗口、弯曲角阈值、检测置信度等）。安卓版是重新设计的精简实现，只保留实际可用的手势。
+
+## 已知限制
+
+- 无障碍服务必须由用户在系统设置手动开启，App 无法代劳。
+- Android 14 起相机前台服务需从可见界面启动，请务必点 App 内按钮，不要用第三方工具拉起。
+- 部分厂商系统（MIUI / EMUI 等）会限制后台，建议加入电池优化白名单。
+- 光线过暗或手离镜头太远时识别率会下降，保持手部完整入镜、距离 30–60cm 效果最好。
