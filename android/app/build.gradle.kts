@@ -12,14 +12,16 @@ android {
         applicationId = "com.chesereri.handmotiondetector"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            // MediaPipe 的 Graph 静态初始化依赖调用栈，R8 类合并会破坏它
+            // （"no caller found on the stack"），因此 release 不做代码混淆。
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
