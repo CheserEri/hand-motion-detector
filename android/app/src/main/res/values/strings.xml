@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">手势控制</string>
+
+    <string name="accessibility_service_label">手势控制服务</string>
+    <string name="accessibility_service_description">将摄像头识别到的手势转换为全局滑动与系统操作。服务仅在本应用运行时生效，不读取屏幕内容。</string>
+
+    <string name="notification_channel_name">手势控制</string>
+    <string name="notification_channel_description">手势识别前台服务通知</string>
+    <string name="notification_title">手势控制运行中</string>
+    <string name="notification_text">摄像头正在后台识别手势</string>
+    <string name="notification_stop">停止</string>
+
+    <string name="overlay_idle">等待手势</string>
+    <string name="overlay_no_hand">寻找手部…</string>
+    <string name="overlay_low_battery">电量低，已暂停</string>
+    <string name="overlay_no_accessibility">请先开启无障碍服务</string>
+    <string name="overlay_no_app">请先在 App 中设置该手势对应的应用</string>
+    <string name="overlay_paused">摄像头已暂停</string>
+</resources>

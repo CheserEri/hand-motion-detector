@@ -19,3 +19,13 @@ env/
 .vscode/
 *.swp
 *.swo
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/captures/
+*.apk
+*.aab
